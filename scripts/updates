@@ -1,0 +1,53 @@
+#!/bin/bash
+## check for updates and perform as chosen
+## v1.2 2022-07-16
+echo 'Updating cache'
+apt update
+echo 'The following packages have updates'
+apt list --upgradable
+read -p 'Install updates? ' -n 1 -r
+echo
+if [[ $REPLY =~ ^[Yy]$ ]]
+then
+        apt full-upgrade -y
+fi
+read -p 'Run autoremove? ' -n 1 -r
+echo
+if [[ $REPLY =~ ^[Yy]$ ]]
+then
+        apt autoremove
+fi
+read -p 'Run autoclean? ' -n 1 -r
+echo
+if [[ $REPLY =~ ^[Yy]$ ]]
+then
+        apt autoclean
+fi
+echo 'The following packages have left over config files'
+dpkg -l | grep ^rc
+read -p 'Remove configuration remnants? (a for all, y to step through)' -n 1 -r
+echo
+case $REPLY in
+        Y | y )
+                dpkg -l | awk -v re="^rc" '$0 ~ re {print $2}' | while read LINE
+                do
+                        echo $LINE | xargs -p apt purge -y
+                done
+                ;;
+        A | a )
+                dpkg -l | awk -v re="^rc" '$0 ~ re {print $2}' | xargs apt purge -y
+                ;;
+esac
+if ! command -v snap &> /dev/null || [ ! `ps -p1 -ocomm=` == "systemd" ]
+then
+        echo "Snap and/or systemd not installed "
+else
+        read -p 'Update Snaps? ' -n 1 -r
+        echo
+        if command -v snap &> /dev/null && [[ $REPLY =~ ^[Yy]$ ]]
+        then
+                snap refresh
+        else
+                echo "Snap not installed"
+        fi
+fi
